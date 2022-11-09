@@ -2,8 +2,11 @@ from xml.dom import minidom, getDOMImplementation
 import base64
 import gzip
 import sys
-import re
 import os
+import re
+
+def customSort(elem):
+    return k['value']
 
 def add_by_id(job, waypoints, displacement):
     # job = 'commanding_officer'
@@ -16,67 +19,21 @@ def add_by_id(job, waypoints, displacement):
     SpawnPointHuman = {'job': job, 'x': x, 'y': y, 'idcardtags': idcards}
     return SpawnPointHuman
 
-
-# things to import:
-# Submarine name
-
-# jobs to replace,  assistant split to other classes and awaiting rework
-newJobs = [
-    'commanding_officer', 'executive_officer', 'navigator', 'chief',
-    'engineering', 'mechanical', 'quartermaster', 'head_of_security',
-    'security', 'diver', 'chiefmedicaldoctor', 'medicalstaff', 'passenger',
-    'janitor', 'inmate'
-]
-vanillaJobs = [
-    'captain', 'engineer', 'mechanic', 'securityofficer', 'medicaldoctor',
-    'assistant'
-]
-
-# seeted in main
-# filename = "Azimuth [JE].xml"
-
-# # seeted in main
-# changename = False
-
-def main():
-    global filename
-    global changename
-    filename  = "Azimuth [JE].xml"
-    changename = False
-    if(len(sys.argv) > 1):
-        for i in range(1,len(sys.argv)):
-            # IndexError: string index out of range for some thus this:
-            if(len(sys.argv[i]) > 4):
-                if(str(sys.argv[i][-4]) + str(sys.argv[i][-3]) + str(sys.argv[i][-2]) + str(sys.argv[i][-1]) == '.sub' and os.path.exists(sys.argv[i])):
-                    filename = sys.argv[i]
-                    with gzip.open(filename, 'rb') as f:
-                        file_content = f.read()
-                # TODO support for more than one 'filename' or/and detect if user screwed up and typed sub twice. Also less supid check
-
-                        filename = filename[:-4] + ".xml"
-                        with open(filename, 'wb') as fx:
-                                fx.write(file_content)
-
-            if len(sys.argv) >= 3 :
-                if sys.argv[2] == '--changename' or sys.argv[2] == '-c':
-                    changename = True
-    # else:
-    # TODO a propt for user imput if no arguents are given
-
+def fileoperation(filename):
     # parse an xml file by name
     with minidom.parse(filename) as mydoc:
-        items = mydoc.getElementsByTagName('Submarine')[0]
+        submarine = mydoc.getElementsByTagName('Submarine')[0]
 
-        requiredcontentpackages = items.getAttribute('requiredcontentpackages')
-        name = items.getAttribute('name')
-        description = items.getAttribute('description')
+        requiredcontentpackages = submarine.getAttribute('requiredcontentpackages')
+        name = submarine.getAttribute('name')
+        description = submarine.getAttribute('description')
         #cant print this as variable so whatever
-        previewimage = items.getAttribute('previewimage')
+        previewimage = submarine.getAttribute('previewimage')
 
         # one specific item attribute
-        print('Item name attribute: ' + name)
-        print('Item description attribute: ' + description)
-        print('Item requiredcontentpackages attribute: ' + requiredcontentpackages)
+        print('Submarine name attribute: ' + name)
+        print('Submarine description attribute: ' + description)
+        print('Submarine requiredcontentpackages attribute: ' + requiredcontentpackages)
 
         previewimage = base64.b64decode(previewimage)
         name_ofpic = name + ".png"
@@ -85,14 +42,14 @@ def main():
         image_result.write(previewimage)
 
         # get all waypoints
-        items = mydoc.getElementsByTagName('WayPoint')
+        waypoints_og = mydoc.getElementsByTagName('WayPoint')
         # all all original waypoints
         waypoints = []
         # maxofwaypoints = 0 not needed, use len(waypoints)
         lastID = 0
 
         # add classes to 'waypoints' array
-        for elem in items:
+        for elem in waypoints_og:
             if elem.getAttribute("spawn") == "Human":
                 job = elem.getAttribute('job')
                 # initialized first to catch errors later
@@ -110,15 +67,39 @@ def main():
                         'idcardtags': idcardtags
                     }
                     waypoints.append(SpawnPointHuman)
-            if int(elem.getAttribute("ID")) >= lastID:
-                lastID = int(elem.getAttribute("ID")) + 1
+
+        # idlist = mydoc.getAttribute("ID")
+        # for elem in idlist:
+        #     test = float(elem.getAttribute("ID"))
+        #     test = int(test)
+        #     if test >= lastID:
+        #         print(test)
+        #         lastID = test + 1
+        # (?<=ID=").*?(?=")
+        pattern = '(?<=ID=").*?(?=")'
+        file_forid = open(filename, "r")
+        for line in file_forid:
+            if re.search(pattern, line):
+                arrx = re.findall(pattern, line)
+                for resoult in arrx:
+                    if int(resoult) >= lastID:
+                        lastID = int(resoult) + 1
 
         # remove all occurences of 'newJobs' hope it works
-        for elem in items:
+        for elem in waypoints_og:
             if elem.getAttribute("spawn") == "Human":
                 if elem.getAttribute('job') in newJobs:
                     mydoc.documentElement.removeChild(elem)
                     elem.unlink()
+
+        # for elem in mydoc:
+            
+            
+        #         lastID = test + 1
+        #         print(elem.getAttribute("ID"))
+        #         print(type(test))
+        #         # for i in range(len(elem)):
+        #         #     print(elem[i].getAttribute("ID"))
 
         # create new waypoints and store them in 'newwaypoints' array
         newwaypoints = []
@@ -219,9 +200,104 @@ def main():
         file_string = mydoc.toprettyxml(indent='   ', newl='')
         image_result.write(file_string)
 
-        with open(filenameoutput  + ".xml", 'rb') as f:
+        if os.path.exists(placement_dir) == False:
+            os.mkdir(placement_dir)
+            print('Directory ' + placement_dir + ' created')
+
+        with open(filenameoutput + ".xml", 'rb') as f:
             file_content = f.read()
-        with gzip.open(filenameoutput + ".sub", 'wb') as f:
+        with gzip.open(os.path.join(placement_dir, filenameoutput) + ".sub", 'wb') as f:
             f.write(file_content)
+
+# things to import:
+# Submarine name
+
+# jobs to replace,  assistant split to other classes and awaiting rework
+newJobs = [
+    'commanding_officer', 'executive_officer', 'navigator', 'chief',
+    'engineering', 'mechanical', 'quartermaster', 'head_of_security',
+    'security', 'diver', 'chiefmedicaldoctor', 'medicalstaff', 'passenger',
+    'janitor', 'inmate'
+]
+vanillaJobs = [
+    'captain', 'engineer', 'mechanic', 'securityofficer', 'medicaldoctor',
+    'assistant'
+]
+
+# seeted in main
+# filename = "Azimuth [JE].xml"
+
+# # seeted in main
+# changename = False
+
+def main():
+    global filename
+    global changename
+    global placement_dir
+    filename  = "Berilia.sub"
+    placement_dir = "placementdir"
+    sub_files_dir = ""
+    changename = True
+    filename_arr = []
+    options_arr = sys.argv
+    if(len(options_arr) <= 1):
+        options_arr.append("-c")
+        # Get the list of all files and directories
+        if(len(sub_files_dir) > 0):
+            # TODO make an catch on file not found error
+            dir_list = os.listdir(sub_files_dir)
+        else:
+            dir_list = os.listdir()
+
+        # getting .sub files list
+        sub_file_list = []
+        for file in dir_list:
+            if(len(file)>4):
+                if (str(file[-4]) + str(file[-3]) + str(file[-2]) + str(file[-1])) == '.sub':
+                    sub_file_list.append(file)
+
+        # # testprint TODO make acctual good print of items that get changed
+        # for file in sub_file_list:
+        #     print(file)
+        for file in sub_file_list:
+            options_arr.append(file)
+        options_arr.append("-d")
+        options_arr.append(placement_dir)
+    if(len(options_arr) > 1):
+        for i in range(1,len(options_arr)):
+            # IndexError: string index out of range for some thus this:
+            if(len(options_arr[i]) > 4):
+                if(str(options_arr[i][-4]) + str(options_arr[i][-3]) + str(options_arr[i][-2]) + str(options_arr[i][-1]) == '.sub' and os.path.exists(options_arr[i])):
+                    filename_arr.append(str(options_arr[i]))
+
+            if len(options_arr) >= 3 :
+                if options_arr[i] == '--changename' or options_arr[i] == '-c':
+                    changename = True
+            
+            if len(options_arr) >= 3 :
+                if options_arr[i] == '--placementdir' or options_arr[i] == '-d':
+                    if len(options_arr) - i > 0:
+                        placement_dir = str(options_arr[i+1]) 
+    else:
+        filename_arr.append(filename)
+    # TODO a propt for user imput if no arguents are given
+
+    if(len(filename_arr) > 0):
+        for i in range(len(filename_arr)):
+            filename = filename_arr[i]
+            
+
+            if (filename[-4] + filename[-3] + filename[-2] + filename[-1] == '.sub'):
+                with gzip.open(filename, 'rb') as f:
+                    file_content = f.read()
+                    # TODO support for more than one 'filename' or/and detect if user screwed up and typed sub twice. Also less supid check
+
+                    filename = filename[:-4] + ".xml"
+                    with open(filename, 'wb') as fx:
+                        fx.write(file_content)
+
+                
+            fileoperation(filename)
+
 
 main()

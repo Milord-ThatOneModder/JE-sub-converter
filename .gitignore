@@ -2,3 +2,10 @@
 *.sub
 *.png
 *.xml
+Azimuth \[JE\].sub
+Azimuth \[JE\].xml
+base64
+gzip
+os
+re
+sys

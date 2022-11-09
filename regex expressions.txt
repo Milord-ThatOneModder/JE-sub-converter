@@ -1,4 +1,0 @@
-requiredcontentpackages="Vanilla 0\.9.*?"
-name=".*?"
-description=".*?"
-previewimage=".*?"
