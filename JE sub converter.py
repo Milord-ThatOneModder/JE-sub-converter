@@ -1,12 +1,39 @@
+#!/usr/bin/python
 from xml.dom import minidom, getDOMImplementation
 import base64
 import gzip
 import sys
 import os
 import re
+import shutil
 
-def customSort(elem):
-    return k['value']
+def dumb_sub_check(file_string):
+    file_string = str(file_string)
+    return file_string[-4] + file_string[-3] + file_string[-2] + file_string[-1] == '.sub' and os.path.exists(file_string)
+
+def get_list_of_sub_files_in_dir(sub_files_dir):
+    filename_arr = []
+    # Get the list of all files and directories
+    if(len(sub_files_dir) > 0):
+        # TODO make an catch on file not found error
+        dir_list = os.listdir(sub_files_dir)
+    else:
+        dir_list = os.listdir()
+
+    # getting .sub files list
+    sub_file_list = []
+    for file in dir_list:
+        if(len(file)>4):
+            if (str(file[-4]) + str(file[-3]) + str(file[-2]) + str(file[-1])) == '.sub':
+                sub_file_list.append(file)
+
+    # # testprint TODO make acctual good print of items that get changed
+    # for file in sub_file_list:
+    #     print(file)
+    for file in sub_file_list:
+        # append filenames
+        filename_arr.append(str(file))
+    return filename_arr
 
 def add_by_id(job, waypoints, displacement):
     # job = 'commanding_officer'
@@ -34,12 +61,6 @@ def fileoperation(filename):
         print('Submarine name attribute: ' + name)
         print('Submarine description attribute: ' + description)
         print('Submarine requiredcontentpackages attribute: ' + requiredcontentpackages)
-
-        previewimage = base64.b64decode(previewimage)
-        name_ofpic = name + ".png"
-        image_result = open(name_ofpic, 'wb')
-        print("Item previewimage attribute: " + "In a file: " + name_ofpic)
-        image_result.write(previewimage)
 
         # get all waypoints
         waypoints_og = mydoc.getElementsByTagName('WayPoint')
@@ -189,22 +210,31 @@ def fileoperation(filename):
             name = name + ' [JE]'
         mydoc.documentElement.setAttribute('name', name)
         # add JobsExtended to requiredcontentpackages
-        if requiredcontentpackages.find('JobsExtended') == -1:
-            requiredcontentpackages = requiredcontentpackages + ', JobsExtended'
+        if requiredcontentpackages.find(', JobsExtended') == -1:
+            if len(requiredcontentpackages) >= 0:
+                requiredcontentpackages = requiredcontentpackages + ', JobsExtended'
+            else:
+                requiredcontentpackages += "JobsExtended"
         mydoc.documentElement.setAttribute('requiredcontentpackages', requiredcontentpackages)
 
         # all items data TESTING
         filenameoutput = name
         print('\nAll item data in: ' + filenameoutput)
-        image_result = open(filenameoutput + ".xml", 'w')
+        xml_result = open(os.path.join(placement_dir, filenameoutput + ".xml"), 'w')
         file_string = mydoc.toprettyxml(indent='   ', newl='')
-        image_result.write(file_string)
+        xml_result.write(file_string)
 
         if os.path.exists(placement_dir) == False:
             os.mkdir(placement_dir)
             print('Directory ' + placement_dir + ' created')
 
-        with open(filenameoutput + ".xml", 'rb') as f:
+        previewimage = base64.b64decode(previewimage)
+        name_ofpic = name + ".png"
+        image_result = open(os.path.join(placement_dir, name_ofpic), 'wb')
+        print("Item previewimage attribute: " + "In a file: " + name_ofpic)
+        image_result.write(previewimage)
+
+        with open(os.path.join(placement_dir, filenameoutput) + ".xml", 'rb') as f:
             file_content = f.read()
         with gzip.open(os.path.join(placement_dir, filenameoutput) + ".sub", 'wb') as f:
             f.write(file_content)
@@ -234,52 +264,64 @@ def main():
     global filename
     global changename
     global placement_dir
+    global xml_dir
+
     filename  = "Berilia.sub"
     placement_dir = "placementdir"
+    xml_dir = "xmldir"
     sub_files_dir = ""
-    changename = True
+    changename = False
     filename_arr = []
     options_arr = sys.argv
-    if(len(options_arr) <= 1):
+    # DEFAULT OPTIONS
+    if(len(options_arr) <= 1): 
+        #set up changename
+        changename = True
         options_arr.append("-c")
-        # Get the list of all files and directories
-        if(len(sub_files_dir) > 0):
-            # TODO make an catch on file not found error
-            dir_list = os.listdir(sub_files_dir)
-        else:
-            dir_list = os.listdir()
 
-        # getting .sub files list
-        sub_file_list = []
-        for file in dir_list:
-            if(len(file)>4):
-                if (str(file[-4]) + str(file[-3]) + str(file[-2]) + str(file[-1])) == '.sub':
-                    sub_file_list.append(file)
+        tempfilename_arr = get_list_of_sub_files_in_dir(sub_files_dir)
+        for tempfilename in tempfilename_arr:
+            options_arr.append(str(tempfilename))
+            filename_arr.append(str(tempfilename))
 
-        # # testprint TODO make acctual good print of items that get changed
-        # for file in sub_file_list:
-        #     print(file)
-        for file in sub_file_list:
-            options_arr.append(file)
+        # setting up default placement dir 
         options_arr.append("-d")
         options_arr.append(placement_dir)
-    if(len(options_arr) > 1):
-        for i in range(1,len(options_arr)):
-            # IndexError: string index out of range for some thus this:
-            if(len(options_arr[i]) > 4):
-                if(str(options_arr[i][-4]) + str(options_arr[i][-3]) + str(options_arr[i][-2]) + str(options_arr[i][-1]) == '.sub' and os.path.exists(options_arr[i])):
-                    filename_arr.append(str(options_arr[i]))
+        placement_dir = "placementdir"
 
+
+        # filename_arr.append(filename)
+    # CUSTOM OPTIONS!
+    else:
+        for i in range(1,len(options_arr)):
+
+            # -c, --changename option OPTIONAL
             if len(options_arr) >= 3 :
                 if options_arr[i] == '--changename' or options_arr[i] == '-c':
                     changename = True
             
+            # -d, --placementdir + after that specification of placementdir OPTIONAL
             if len(options_arr) >= 3 :
                 if options_arr[i] == '--placementdir' or options_arr[i] == '-d':
                     if len(options_arr) - i > 0:
                         placement_dir = str(options_arr[i+1]) 
-    else:
-        filename_arr.append(filename)
+                        if (i + 2) < len(options_arr):
+                            i = i + 2
+                        else:
+                            i = i + 1
+
+            # name of the sub(s) NEEDED
+            # IndexError: string index out of range for some thus this:
+            if(len(options_arr[i]) > 4):
+                if dumb_sub_check(str(options_arr[i])):
+                    filename_arr.append(str(options_arr[i]))
+                elif(str(options_arr[i][-4]) != "." and str(options_arr[i][-3]) != "." and str(options_arr[i][-2]) != "." and str(options_arr[i][-1]) != "." and os.path.exists(options_arr[i])):
+                    tempfilename_arr = get_list_of_sub_files_in_dir(str(options_arr[i]))
+                    for tempfilename in tempfilename_arr:
+                        if dumb_sub_check(tempfilename):
+                            filename_arr.append(os.path.join(str(options_arr[i]), str(tempfilename)))
+
+    # else:
     # TODO a propt for user imput if no arguents are given
 
     if(len(filename_arr) > 0):
@@ -296,8 +338,18 @@ def main():
                     with open(filename, 'wb') as fx:
                         fx.write(file_content)
 
-                
+            
+            filename = os.path.join(placement_dir ,os.path.basename(filename))
+            xml_dir_filename = os.path.join(xml_dir, filename)
+
             fileoperation(filename)
+            if os.path.exists(os.path.dirname(xml_dir_filename)) == False:
+                os.makedirs(os.path.dirname(xml_dir_filename))
+                print('Directory ' + os.path.dirname(xml_dir_filename) + ' created')
+            # move xml's to xml archive folder
+
+            shutil.move(filename, xml_dir_filename)
+            shutil.move(filename[0:-4] + " [JE].xml", xml_dir_filename[0:-4] + " [JE].xml")
 
 
 main()

@@ -9,3 +9,6 @@ gzip
 os
 re
 sys
+.vscode/launch.json
+LocalMods/*
+Steam Workshop Subs to convert.txt
