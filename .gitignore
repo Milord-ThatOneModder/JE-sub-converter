@@ -14,3 +14,4 @@ LocalMods/*
 Steam Workshop Subs to convert.txt
 __pycache__/JESubConverter.cpython-310.pyc
 Steam Workshop Subs to convert.htm
+.vscode/*
