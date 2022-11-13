@@ -4,6 +4,8 @@ import re
 import shutil
 import subprocess
 import JESubConverter
+import requests
+import time
 
 steam_workshopcontent_dir = "D:\SteamLibrary\steamapps\workshop\content\\602960"
 localmods_dir = "LocalMods"
@@ -71,23 +73,44 @@ def run_converter(mod_dir, localmods_dir, steam_workshopcontent_dir , mod_id):
 
 # (?<=<a href="https://steamcommunity.com/sharedfiles/filedetails/\?id=).*?(?="><div class="workshopItemTitle">)
 filename = "Steam Workshop Subs to convert.htm"
-pattern = "(?<=<a href=\"https:\/\/steamcommunity\.com\/sharedfiles\/filedetails\/\?id=).*?(?=\"><div class=\"workshopItemTitle\">)"
 steam_workshopcontent_dir = ""
 
 arr_of_witems = []
 
 with open(filename,'r', encoding='utf-8') as file_for_id:
     file_for_id_str = file_for_id.read()
+    pattern = "(?<=<a href=\"https:\/\/steamcommunity\.com\/sharedfiles\/filedetails\/\?id=).*?(?=\"><div class=\"workshopItemTitle\">)"
     arrx = re.findall(pattern, file_for_id_str)
-    for x in arrx:
-        arr_of_witems.append(str(x))
+    pattern = "(?<=<img class=\"workshopItemPreviewImage\" src=\").*?(?=\?imw=)"
+    arry = re.findall(pattern, file_for_id_str)
+    for i in range(len(arrx)):
+        WorkshopItem = {'ID': arrx[i], 'PrewiewPic': arry[i]}
+        arr_of_witems.append(WorkshopItem)
 
 
 for x in arr_of_witems:
     steam_workshopcontent_dir = "D:\SteamLibrary\steamapps\workshop\content\\602960"
     localmods_dir = "LocalMods"
 
-    mod_id = str(x)
+    mod_id = str(x["ID"])
 
     mod_dir = copy_and_edit(steam_workshopcontent_dir, localmods_dir, mod_id)
+
+    # get image
+    url = str(x["PrewiewPic"])
+    preview_filename = "thumbnail.JPG"
+    preview_filename = os.path.join(mod_dir, preview_filename)
+    time.sleep(1)
+    res = requests.get(url, stream = True)
+    if res.status_code == 200:
+        with open(preview_filename,'wb') as f:
+            shutil.copyfileobj(res.raw, f)
+            print('Image sucessfully Downloaded: ',preview_filename)
+    else:
+        print('Image Couldn\'t be retrieved')
+
+    with open(os.path.join(mod_dir, "README.md"),'w') as f:
+        f.write("Original submarine at: " + "https://steamcommunity.com/sharedfiles/filedetails/?id=" + mod_id)
+        print('Readme created: ',os.path.join(mod_dir, "README.md"))
+
     run_converter(mod_dir, localmods_dir, steam_workshopcontent_dir, mod_id)
