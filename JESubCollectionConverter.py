@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import subprocess
+import JESubConverter
 
 steam_workshopcontent_dir = "D:\SteamLibrary\steamapps\workshop\content\\602960"
 localmods_dir = "LocalMods"
@@ -30,7 +31,7 @@ def copy_and_edit(steam_workshopcontent_dir, localmods_dir, mod_id):
                 mod_name = arrx[0]
                 break
 
-    output_dir = os.path.join(localmods_dir, mod_name)
+    output_dir = os.path.join(localmods_dir, mod_name + " [JE]")
 
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
@@ -41,6 +42,8 @@ def copy_and_edit(steam_workshopcontent_dir, localmods_dir, mod_id):
     with open(filelist_path,'r', encoding='utf8') as filelist:
         file_content = filelist.read()
         pattern = " steamworkshopid=\".*?\""
+        file_content = re.sub(pattern, "", file_content)
+        pattern = " installtime=\".*?\""
         file_content = re.sub(pattern, "", file_content)
         pattern = " expectedhash=\".*?\""
         file_content = re.sub(pattern, "", file_content)
@@ -56,28 +59,29 @@ def copy_and_edit(steam_workshopcontent_dir, localmods_dir, mod_id):
 
     print("Copied " + os.path.join(steam_workshopcontent_dir, mod_id) + " to " + os.path.join(localmods_dir, mod_name))
 
-    return os.path.join(localmods_dir, mod_name)
+    return output_dir
 
 def run_converter(mod_dir, localmods_dir, steam_workshopcontent_dir , mod_id):
 
     input_dir = os.path.join(steam_workshopcontent_dir, mod_id)
     print("Converter running on: " + mod_dir)
-    print("\"JE\ sub\ converter.py\"" + " -c" + " " + input_dir + " -d " + mod_dir)
-    subprocess.call(["python", "JE sub converter.py", "-c", input_dir, "-d", mod_dir])
+    # print("\"JE\ sub\ converter.py\"" + " -c" + " " + input_dir + " -d " + mod_dir)
+    # subprocess.call(["python", "JE sub converter.py", "-c", input_dir, "-d", mod_dir])
+    JESubConverter.runit(["-c", "-r", mod_dir, "-d", mod_dir])
 
 # (?<=<a href="https://steamcommunity.com/sharedfiles/filedetails/\?id=).*?(?="><div class="workshopItemTitle">)
-filename = "Steam Workshop Subs to convert.txt"
-pattern = "(?<=\?id=).*?(?=\"><div class=\"workshopItemTitle\">)"
+filename = "Steam Workshop Subs to convert.htm"
+pattern = "(?<=<a href=\"https:\/\/steamcommunity\.com\/sharedfiles\/filedetails\/\?id=).*?(?=\"><div class=\"workshopItemTitle\">)"
 steam_workshopcontent_dir = ""
 
 arr_of_witems = []
 
 with open(filename,'r', encoding='utf-8') as file_for_id:
-    for line in file_for_id:
-        if re.search(pattern, line):
-            arrx = re.findall(pattern, line)
-            for x in arrx:
-                arr_of_witems.append(str(x))
+    file_for_id_str = file_for_id.read()
+    arrx = re.findall(pattern, file_for_id_str)
+    for x in arrx:
+        arr_of_witems.append(str(x))
+
 
 for x in arr_of_witems:
     steam_workshopcontent_dir = "D:\SteamLibrary\steamapps\workshop\content\\602960"

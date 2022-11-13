@@ -9,7 +9,12 @@ import shutil
 
 def dumb_sub_check(file_string):
     file_string = str(file_string)
-    return file_string[-4] + file_string[-3] + file_string[-2] + file_string[-1] == '.sub' and os.path.exists(file_string)
+    extension = file_string[-4] + file_string[-3] + file_string[-2] + file_string[-1]
+    if extension == '.sub':
+        return True
+    else:
+        return False
+    # return extension == '.sub' and os.path.exists(file_string)
 
 def get_list_of_sub_files_in_dir(sub_files_dir):
     filename_arr = []
@@ -42,13 +47,16 @@ def add_by_id(job, waypoints, displacement):
     y = waypoints['y']
     idcards = waypoints['idcardtags']
     if idcards.find("id_" + job) == -1:
-        idcards += ",id_" + job
+        if len(idcards) > 0:
+            idcards += ",id_" + job
+        else:
+            idcards += "id_" + job
     SpawnPointHuman = {'job': job, 'x': x, 'y': y, 'idcardtags': idcards}
     return SpawnPointHuman
 
-def fileoperation(filename):
-    # parse an xml file by name
-    with minidom.parse(filename) as mydoc:
+def fileoperation(file_content):
+    # parse an xml file by namee)
+    with minidom.parseString(file_content) as mydoc:
         submarine = mydoc.getElementsByTagName('Submarine')[0]
 
         requiredcontentpackages = submarine.getAttribute('requiredcontentpackages')
@@ -97,14 +105,12 @@ def fileoperation(filename):
         #         print(test)
         #         lastID = test + 1
         # (?<=ID=").*?(?=")
-        pattern = '(?<=ID=").*?(?=")'
-        file_forid = open(filename, "r")
-        for line in file_forid:
-            if re.search(pattern, line):
-                arrx = re.findall(pattern, line)
-                for resoult in arrx:
-                    if int(resoult) >= lastID:
-                        lastID = int(resoult) + 1
+        pattern = "(?<=ID=\").*?(?=\")"
+        file_forid = str(file_content)
+        arrx = re.findall(pattern, file_forid)
+        for resoult in arrx:
+            if int(resoult) >= lastID:
+                lastID = int(resoult) + 1
 
         # remove all occurences of 'newJobs' hope it works
         for elem in waypoints_og:
@@ -214,13 +220,17 @@ def fileoperation(filename):
             if len(requiredcontentpackages) >= 0:
                 requiredcontentpackages = requiredcontentpackages + ', JobsExtended'
             else:
-                requiredcontentpackages += "JobsExtended"
+                requiredcontentpackages += name_of_the_mod
         mydoc.documentElement.setAttribute('requiredcontentpackages', requiredcontentpackages)
 
         # all items data TESTING
         filenameoutput = name
-        print('\nAll item data in: ' + filenameoutput)
-        xml_result = open(os.path.join(placement_dir, filenameoutput + ".xml"), 'w')
+        tmp_path = os.path.join(placement_dir, os.path.dirname(filenameoutput + ".xml"))
+        tmp_file = os.path.join(placement_dir, filenameoutput + ".xml")
+        print('\nAll item data in: ' + tmp_file)
+        if (os.path.exists(tmp_path) == False):
+            os.makedirs(tmp_path)
+        xml_result = open(tmp_file, 'w', encoding='utf-8')
         file_string = mydoc.toprettyxml(indent='   ', newl='')
         xml_result.write(file_string)
 
@@ -238,6 +248,8 @@ def fileoperation(filename):
             file_content = f.read()
         with gzip.open(os.path.join(placement_dir, filenameoutput) + ".sub", 'wb') as f:
             f.write(file_content)
+
+        return name
 
 # things to import:
 # Submarine name
@@ -260,19 +272,26 @@ vanillaJobs = [
 # # seeted in main
 # changename = False
 
-def main():
+def runit(options_arr_temp):
     global filename
     global changename
+    global removeafter
     global placement_dir
     global xml_dir
+    global name_of_the_mod
+    global filenameoutput
 
+    filenameoutput = ""
+
+    name_of_the_mod = "Jobs Extended"
     filename  = "Berilia.sub"
     placement_dir = "placementdir"
     xml_dir = "xmldir"
     sub_files_dir = ""
     changename = False
+    removeafter = False
     filename_arr = []
-    options_arr = sys.argv
+    options_arr = options_arr_temp
     # DEFAULT OPTIONS
     if(len(options_arr) <= 1): 
         #set up changename
@@ -293,26 +312,28 @@ def main():
         # filename_arr.append(filename)
     # CUSTOM OPTIONS!
     else:
-        for i in range(1,len(options_arr)):
+        for i in range(0,len(options_arr)):
 
             # -c, --changename option OPTIONAL
-            if len(options_arr) >= 3 :
+            if len(options_arr) >= 1 :
                 if options_arr[i] == '--changename' or options_arr[i] == '-c':
                     changename = True
             
+            # -r, --remove option OPTIONAL
+            if len(options_arr) >= 1 :
+                if options_arr[i] == '--remove' or options_arr[i] == '-r':
+                    removeafter = True
+
             # -d, --placementdir + after that specification of placementdir OPTIONAL
-            if len(options_arr) >= 3 :
-                if options_arr[i] == '--placementdir' or options_arr[i] == '-d':
+            if len(options_arr) >= 1 :
+                if options_arr[i-1] == '--placementdir' or options_arr[i-1] == '-d':
                     if len(options_arr) - i > 0:
-                        placement_dir = str(options_arr[i+1]) 
-                        if (i + 2) < len(options_arr):
-                            i = i + 2
-                        else:
-                            i = i + 1
+                        placement_dir = str(options_arr[i]) 
+                    continue
 
             # name of the sub(s) NEEDED
             # IndexError: string index out of range for some thus this:
-            if(len(options_arr[i]) > 4):
+            if(len(options_arr[i]) > 5):
                 if dumb_sub_check(str(options_arr[i])):
                     filename_arr.append(str(options_arr[i]))
                 elif(str(options_arr[i][-4]) != "." and str(options_arr[i][-3]) != "." and str(options_arr[i][-2]) != "." and str(options_arr[i][-1]) != "." and os.path.exists(options_arr[i])):
@@ -323,33 +344,46 @@ def main():
 
     # else:
     # TODO a propt for user imput if no arguents are given
-
+    name =""
     if(len(filename_arr) > 0):
         for i in range(len(filename_arr)):
             filename = filename_arr[i]
-            
+            old_filename = filename_arr[i]
 
-            if (filename[-4] + filename[-3] + filename[-2] + filename[-1] == '.sub'):
+            if (dumb_sub_check(filename)):
                 with gzip.open(filename, 'rb') as f:
                     file_content = f.read()
                     # TODO support for more than one 'filename' or/and detect if user screwed up and typed sub twice. Also less supid check
 
-                    filename = filename[:-4] + ".xml"
-                    with open(filename, 'wb') as fx:
-                        fx.write(file_content)
+                    # filename = filename[:-4] + ".xml"
+                    # with open(filename, 'wb') as fx:
+                    #     fx.write(file_content)
 
             
-            filename = os.path.join(placement_dir ,os.path.basename(filename))
-            xml_dir_filename = os.path.join(xml_dir, filename)
+                    # filename = os.path.join(placement_dir ,os.path.basename(filename))
+                    # xml_dir_filename = os.path.join(xml_dir, filename)
 
-            fileoperation(filename)
-            if os.path.exists(os.path.dirname(xml_dir_filename)) == False:
-                os.makedirs(os.path.dirname(xml_dir_filename))
+                    name = fileoperation(file_content)
+
+            xml_dir_filename = os.path.join(xml_dir, placement_dir)
+            if os.path.exists(os.path.dirname(os.path.join(xml_dir_filename, (os.path.basename(filename[0:-4]) + " [JE].xml")))) == False:
+                os.makedirs(xml_dir_filename)
                 print('Directory ' + os.path.dirname(xml_dir_filename) + ' created')
             # move xml's to xml archive folder
 
-            shutil.move(filename, xml_dir_filename)
-            shutil.move(filename[0:-4] + " [JE].xml", xml_dir_filename[0:-4] + " [JE].xml")
+            
 
+            filename = os.path.join(os.path.dirname(filename), name[0:-5] + ".sub")
 
-main()
+            tmp_input = os.path.join(placement_dir, os.path.basename(filename[0:-4]))
+            tmp_output = os.path.join(xml_dir_filename, os.path.basename(filename[0:-4]))
+
+            if(removeafter):
+                shutil.move(old_filename, tmp_output  + ".sub")
+            shutil.move(tmp_input + " [JE].xml", tmp_output  + " [JE].xml")
+
+def main():
+    runit(sys.argv)
+
+if __name__ == '__main__':
+    main()
