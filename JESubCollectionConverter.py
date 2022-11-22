@@ -90,7 +90,7 @@ with open(filename,'r', encoding='utf-8') as file_for_id:
 
 for x in arr_of_witems:
     steam_workshopcontent_dir = "D:\SteamLibrary\steamapps\workshop\content\\602960"
-    localmods_dir = "LocalMods"
+    localmods_dir = "D:\\SteamLibrary\\steamapps\\common\\Barotrauma\\LocalMods"
 
     mod_id = str(x["ID"])
 
