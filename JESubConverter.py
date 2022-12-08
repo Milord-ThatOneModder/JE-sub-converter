@@ -57,27 +57,24 @@ def add_by_id(job, waypoints, displacement):
 def fileoperation(file_content):
     # parse an xml file by namee)
     with minidom.parseString(file_content) as mydoc:
+        # Made this so ppl can se what subs have problems or whatever
         submarine = mydoc.getElementsByTagName('Submarine')[0]
-
-        requiredcontentpackages = submarine.getAttribute('requiredcontentpackages')
         name = submarine.getAttribute('name')
-        description = submarine.getAttribute('description')
+        print('Submarine name: ' + name)
         #cant print this as variable so whatever
         previewimage = submarine.getAttribute('previewimage')
 
-        # one specific item attribute
-        print('Submarine name attribute: ' + name)
-        print('Submarine description attribute: ' + description)
-        print('Submarine requiredcontentpackages attribute: ' + requiredcontentpackages)
 
         # get all waypoints
         waypoints_og = mydoc.getElementsByTagName('WayPoint')
-        # all all original waypoints
+        # remove all occurences of 'newJobs' hope it works
+        for elem in waypoints_og:
+            if elem.getAttribute("spawn") == "Human":
+                if elem.getAttribute('job') in newJobs:
+                    mydoc.documentElement.removeChild(elem)
+                    elem.unlink()
         waypoints = []
-        # maxofwaypoints = 0 not needed, use len(waypoints)
-        lastID = 0
-
-        # add classes to 'waypoints' array
+        # add "classes" to 'waypoints' array
         for elem in waypoints_og:
             if elem.getAttribute("spawn") == "Human":
                 job = elem.getAttribute('job')
@@ -96,108 +93,99 @@ def fileoperation(file_content):
                         'idcardtags': idcardtags
                     }
                     waypoints.append(SpawnPointHuman)
-
-        # idlist = mydoc.getAttribute("ID")
-        # for elem in idlist:
-        #     test = float(elem.getAttribute("ID"))
-        #     test = int(test)
-        #     if test >= lastID:
-        #         print(test)
-        #         lastID = test + 1
-        # (?<=ID=").*?(?=")
-        pattern = "(?<=ID=\").*?(?=\")"
-        file_forid = str(file_content)
-        arrx = re.findall(pattern, file_forid)
-        for resoult in arrx:
-            if int(resoult) >= lastID:
-                lastID = int(resoult) + 1
-
-        # remove all occurences of 'newJobs' hope it works
-        for elem in waypoints_og:
-            if elem.getAttribute("spawn") == "Human":
-                if elem.getAttribute('job') in newJobs:
-                    mydoc.documentElement.removeChild(elem)
-                    elem.unlink()
-
-        # for elem in mydoc:
-            
-            
-        #         lastID = test + 1
-        #         print(elem.getAttribute("ID"))
-        #         print(type(test))
-        #         # for i in range(len(elem)):
-        #         #     print(elem[i].getAttribute("ID"))
-
-        # create new waypoints and store them in 'newwaypoints' array
         newwaypoints = []
-        for i in range(len(waypoints)):
-            offset = 40
-            # capitan -> co + xo + nav
-            if waypoints[i]['job'] == 'captain':
-                # add co spawn from variables - same coordinates as capitan
-                job = 'commanding_officer'
-                newwaypoints.append(add_by_id(job, waypoints[i], 0))
-                # add xo spawn from variables - coordinates from co x=x-2
-                job = 'executive_officer'
-                newwaypoints.append(add_by_id(job, waypoints[i], -offset))
-                # add nav spawn from variables - coordinates from co x=x+2
-                job = 'navigator'
-                newwaypoints.append(add_by_id(job, waypoints[i], offset))
-            
-            # engineer -> engineering + chief
-            if waypoints[i]['job'] == 'engineer':
-                # add engineering spawn from variables - same coordinates as engineer
-                job = 'engineering'
-                newwaypoints.append(add_by_id(job, waypoints[i], 0))
-                # add chief spawn from variables - coordinates from engineering x=x-2
-                job = 'chief'
-                newwaypoints.append(add_by_id(job, waypoints[i], -offset))
-            
-            # mechanic -> mechanical + quartermaster
-            if waypoints[i]['job'] == 'mechanic':
-                # add mechanical spawn from variables - same coordinates as mechanic
-                job = 'mechanical'
-                newwaypoints.append(add_by_id(job, waypoints[i], 0))
-                # add quartermaster spawn from variables - coordinates from mechanical x=x-2
-                job = 'quartermaster'
-                newwaypoints.append(add_by_id(job, waypoints[i], -offset))
-            
-            # assistant -> passenger + janitor
-            if waypoints[i]['job'] == 'assistant':
-                # add passenger spawn from variables - same coordinates as assistant
-                job = 'passenger'
-                newwaypoints.append(add_by_id(job, waypoints[i], 0))
-                # add janitor spawn from variables - coordinates from assistant x=x-2
-                job = 'janitor'
-                newwaypoints.append(add_by_id(job, waypoints[i], -offset))
+        if len(waypoints) > 0:
+        
+            description = submarine.getAttribute('description')
+            print('Submarine description: ' + description)
+            requiredcontentpackages = submarine.getAttribute('requiredcontentpackages')
+            print('Submarine requiredcontentpackages: ' + requiredcontentpackages)
 
-            # securityofficer -> securityofficer + head_of_security + diver
-            if waypoints[i]['job'] == 'securityofficer':
-                # add security spawn from variables - same coordinates as previous
-                job = 'security'
-                newwaypoints.append(add_by_id(job, waypoints[i], 0))
-                # add head_of_security spawn from variables - coordinates from securityofficer x=x-2
-                job = 'head_of_security'
-                newwaypoints.append(add_by_id(job, waypoints[i], -offset))
-                # add diver spawn from variables - coordinates from securityofficer x=x+2
-                job = 'diver'
-                newwaypoints.append(add_by_id(job, waypoints[i], offset))
-            
-            # medicaldoctor -> medicaldoctor + chiefmedicaldoctor + passenger
-            if waypoints[i]['job'] == 'medicaldoctor':
-                # add medicalstaff spawn from variables - same coordinates as previous
-                job = 'medicalstaff'
-                newwaypoints.append(add_by_id(job, waypoints[i], 0))
-                # add chiefmedicaldoctor spawn from variables - coordinates from medicaldoctor x=x-2
-                job = 'chiefmedicaldoctor'
-                newwaypoints.append(add_by_id(job, waypoints[i], -offset))
-                # add passenger spawn from variables - coordinates from medicaldoctor x=x+2
-                job = 'passenger'
-                newwaypoints.append(add_by_id(job, waypoints[i], offset))
+            lastID = 0
+            pattern = "(?<=ID=\").*?(?=\")"
+            file_forid = str(file_content)
+            arrx = re.findall(pattern, file_forid)
+            for resoult in arrx:
+                if int(resoult) >= lastID:
+                    lastID = int(resoult) + 1
 
+            
+        
+            for i in range(len(waypoints)):
+                offset = 40
+                # capitan -> co + xo + nav
+                if waypoints[i]['job'] == 'captain':
+                    # add co spawn from variables - same coordinates as capitan
+                    job = 'commanding_officer'
+                    newwaypoints.append(add_by_id(job, waypoints[i], 0))
+                    # add xo spawn from variables - coordinates from co x=x-2
+                    job = 'executive_officer'
+                    newwaypoints.append(add_by_id(job, waypoints[i], -offset))
+                    # add nav spawn from variables - coordinates from co x=x+2
+                    job = 'navigator'
+                    newwaypoints.append(add_by_id(job, waypoints[i], offset))
+                
+                # engineer -> engineering + chief
+                if waypoints[i]['job'] == 'engineer':
+                    # add engineering spawn from variables - same coordinates as engineer
+                    job = 'engineering'
+                    newwaypoints.append(add_by_id(job, waypoints[i], 0))
+                    # add chief spawn from variables - coordinates from engineering x=x-2
+                    job = 'chief'
+                    newwaypoints.append(add_by_id(job, waypoints[i], -offset))
+                
+                # mechanic -> mechanical + quartermaster
+                if waypoints[i]['job'] == 'mechanic':
+                    # add mechanical spawn from variables - same coordinates as mechanic
+                    job = 'mechanical'
+                    newwaypoints.append(add_by_id(job, waypoints[i], 0))
+                    # add quartermaster spawn from variables - coordinates from mechanical x=x-2
+                    job = 'quartermaster'
+                    newwaypoints.append(add_by_id(job, waypoints[i], -offset))
+                
+                # assistant -> passenger + janitor
+                if waypoints[i]['job'] == 'assistant':
+                    # add passenger spawn from variables - same coordinates as assistant
+                    job = 'passenger'
+                    newwaypoints.append(add_by_id(job, waypoints[i], 0))
+                    # add janitor spawn from variables - coordinates from assistant x=x-2
+                    job = 'janitor'
+                    newwaypoints.append(add_by_id(job, waypoints[i], -offset))
+
+                # securityofficer -> securityofficer + head_of_security + diver
+                if waypoints[i]['job'] == 'securityofficer':
+                    # add security spawn from variables - same coordinates as previous
+                    job = 'security'
+                    newwaypoints.append(add_by_id(job, waypoints[i], 0))
+                    # add head_of_security spawn from variables - coordinates from securityofficer x=x-2
+                    job = 'head_of_security'
+                    newwaypoints.append(add_by_id(job, waypoints[i], -offset))
+                    # add diver spawn from variables - coordinates from securityofficer x=x+2
+                    job = 'diver'
+                    newwaypoints.append(add_by_id(job, waypoints[i], offset))
+                
+                # medicaldoctor -> medicaldoctor + chiefmedicaldoctor + passenger
+                if waypoints[i]['job'] == 'medicaldoctor':
+                    # add medicalstaff spawn from variables - same coordinates as previous
+                    job = 'medicalstaff'
+                    newwaypoints.append(add_by_id(job, waypoints[i], 0))
+                    # add chiefmedicaldoctor spawn from variables - coordinates from medicaldoctor x=x-2
+                    job = 'chiefmedicaldoctor'
+                    newwaypoints.append(add_by_id(job, waypoints[i], -offset))
+                    # add passenger spawn from variables - coordinates from medicaldoctor x=x+2
+                    job = 'passenger'
+                    newwaypoints.append(add_by_id(job, waypoints[i], offset))
+        else:
+            previewimage = base64.b64decode(previewimage)
+            name_ofpic = name + ".png"
+            image_result = open(os.path.join(placement_dir, name_ofpic), 'wb')
+            print("Item previewimage in a file: " + name_ofpic)
+            image_result.write(previewimage)
+            return "ERR: No waypoints"
 
         # testing 'newwaypoints' array
-        print('\n')
+        if verbose == True:
+            print('\n')
         for i in range(len(newwaypoints)):
             newWaypoint = mydoc.createElement('WayPoint')
             newWaypoint.setAttribute('ID', str(lastID))
@@ -208,8 +196,11 @@ def fileoperation(file_content):
             newWaypoint.setAttribute('idcardtags', str(newwaypoints[i]['idcardtags']))
             newWaypoint.setAttribute('job', str(newwaypoints[i]['job']))
             # testing 'newwaypoints' array
-            print(newWaypoint.toxml())
+            if verbose == True:
+                print(newWaypoint.toxml())
             mydoc.documentElement.appendChild(newWaypoint)
+        if verbose == False:
+            print("Waypoints changed: " + str(len(newwaypoints)))
 
         # change name option
         if changename and name.find(' [JE]') == -1:
@@ -217,17 +208,17 @@ def fileoperation(file_content):
         mydoc.documentElement.setAttribute('name', name)
         # add JobsExtended to requiredcontentpackages
         if requiredcontentpackages.find(', JobsExtended') == -1:
-            if len(requiredcontentpackages) >= 0:
-                requiredcontentpackages = requiredcontentpackages + ', JobsExtended'
+            if len(requiredcontentpackages) > 0:
+                requiredcontentpackages += ', ' + name_of_the_mod
             else:
-                requiredcontentpackages += name_of_the_mod
+                requiredcontentpackages = "Vanilla" + ', ' + name_of_the_mod
         mydoc.documentElement.setAttribute('requiredcontentpackages', requiredcontentpackages)
 
         # all items data TESTING
         filenameoutput = name
         tmp_path = os.path.join(placement_dir, os.path.dirname(filenameoutput + ".xml"))
         tmp_file = os.path.join(placement_dir, filenameoutput + ".xml")
-        print('\nAll item data in: ' + tmp_file)
+        print('All item data in: ' + tmp_file)
         if (os.path.exists(tmp_path) == False):
             os.makedirs(tmp_path)
         xml_result = open(tmp_file, 'w', encoding='utf-8')
@@ -241,7 +232,7 @@ def fileoperation(file_content):
         previewimage = base64.b64decode(previewimage)
         name_ofpic = name + ".png"
         image_result = open(os.path.join(placement_dir, name_ofpic), 'wb')
-        print("Item previewimage attribute: " + "In a file: " + name_ofpic)
+        print("Item previewimage in a file: " + name_ofpic + "\n")
         image_result.write(previewimage)
 
         with open(os.path.join(placement_dir, filenameoutput) + ".xml", 'rb') as f:
@@ -280,16 +271,19 @@ def runit(options_arr_temp):
     global xml_dir
     global name_of_the_mod
     global filenameoutput
+    global verbose
 
     filenameoutput = ""
 
-    name_of_the_mod = "Jobs Extended"
+    name_of_the_mod = "JobsExtended"
     filename  = "Berilia.sub"
     placement_dir = "placementdir"
     xml_dir = "xmldir"
     sub_files_dir = ""
     changename = False
     removeafter = False
+    verbose = False
+
     filename_arr = []
     options_arr = options_arr_temp
     # DEFAULT OPTIONS
@@ -364,23 +358,29 @@ def runit(options_arr_temp):
                     # xml_dir_filename = os.path.join(xml_dir, filename)
 
                     name = fileoperation(file_content)
-
-            xml_dir_filename = os.path.join(xml_dir, placement_dir)
-            if os.path.exists(os.path.dirname(os.path.join(xml_dir_filename, (os.path.basename(filename[0:-4]) + " [JE].xml")))) == False:
-                os.makedirs(xml_dir_filename)
-                print('Directory ' + os.path.dirname(xml_dir_filename) + ' created')
+                    if name == "ERR: No waypoints":
+                        # skip the cycle
+                        print("ERR: No valid waypoints!\n")
+                        continue
+            # 
+            # if os.path.exists(os.path.dirname(os.path.join(xml_dir_filename, (os.path.basename(filename[0:-4]) + " [JE].xml")))) == False:
+            #     os.makedirs(xml_dir_filename)
+            #     print('Directory ' + os.path.dirname(xml_dir_filename) + ' created')
             # move xml's to xml archive folder
 
             
-
+            xml_dir_filename = os.path.join(xml_dir, placement_dir)
             filename = os.path.join(os.path.dirname(filename), name[0:-5] + ".sub")
 
-            tmp_input = os.path.join(placement_dir, os.path.basename(filename[0:-4]))
-            tmp_output = os.path.join(xml_dir_filename, os.path.basename(filename[0:-4]))
 
             if(removeafter):
+                tmp_input = os.path.join(placement_dir, os.path.basename(filename[0:-4]))
+                tmp_output = os.path.join(placement_dir, ".." , "RemoveDir" ,os.path.basename(filename[0:-4]))
+                if os.path.exists(os.path.dirname(tmp_output)) == False:
+                    os.makedirs(os.path.dirname(tmp_output))
+                    print('Directory ' + os.path.dirname(tmp_output) + ' created')
                 shutil.move(old_filename, tmp_output  + ".sub")
-            shutil.move(tmp_input + " [JE].xml", tmp_output  + " [JE].xml")
+                shutil.move(tmp_input + " [JE].xml", tmp_output + " [JE].xml")
 
 def main():
     runit(sys.argv)
