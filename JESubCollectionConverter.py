@@ -84,7 +84,7 @@ def run_converter(mod_dir, localmods_dir, steam_workshopcontent_dir , mod_id):
 
 def get_listOfMods(url_of_steam_collection):
     arr_of_witems = []
-    collection_site = get_htm_of_collection_site("https://steamcommunity.com/sharedfiles/filedetails/?id=2832236513")
+    collection_site = get_htm_of_collection_site(url_of_steam_collection)
     if collection_site != "ERROR":
         pattern = "(?<=<a href=\"https:\/\/steamcommunity\.com\/sharedfiles\/filedetails\/\?id=).*?(?=\"><div class=\"workshopItemTitle\">)"
         arrx = re.findall(pattern, collection_site)
@@ -134,26 +134,43 @@ def main():
             filelist = file_content.read()
         pattern = "(?<=file=\"%ModDir%\/).*.sub(?=\" \/>)"
         sub_files = re.findall(pattern, filelist)
-        changed = 0
+        not_changed = 0
         for sub_file in sub_files:
+            # Fix for people INABILITY to name their subs properly
+            sub_files_in_wm_folder = JESubConverter.get_list_of_sub_files_in_dir(os.path.join(steam_workshopcontent_dir, mod_id))
+            sub_files_in_lm_folder = JESubConverter.get_list_of_sub_files_in_dir(mod_dir)
+            # FUCK IT
+            for sub_file_x in sub_files_in_lm_folder:
+                for sub_file_y in sub_files_in_wm_folder:
+                    if sub_file_x == sub_file_y:
+                        not_changed += 1
             if os.path.exists(os.path.join(mod_dir, sub_file)) == False:
-                filelist = filelist.replace(sub_file, sub_file[0:-9] + ".sub")
-                changed += 1
-        if changed == len(sub_files):
+                # if it didnt find it NOT MY-- AH FUCK
+                if os.path.exists(os.path.join(mod_dir, sub_file[0:-9] + ".sub")) == True:
+                    filelist = filelist.replace(sub_file, sub_file[0:-9] + ".sub")
+                else:
+                    # ... find a sub file that is missing form sub_files_in_lm_folder
+                    # on a second thought automatic is bad idea
+                    filelist = filelist.replace(sub_file, "ERROR DID NOT FIND A SUB" + ".sub")
+                    # should pop up in game, but in account oon me being a dumbass lest make a note to remind myself
+                    error_arr.append(mod_dir[0:-5] + " - SUB COULD NOT BE FOUND -  " + sub_file)
+                    with open(mod_dir[0:-5] + " - SUB COULD NOT BE FOUND -  " + sub_file + ".txt", 'w') as f:
+                        pass
+        if not_changed == len(sub_files):
             shutil.rmtree(mod_dir)
             with open(mod_dir[0:-5] + " - None of sub files had a valid waypoints.txt", 'w') as f:
                 pass
                 print("ERROR: None of sub files had a valid waypoints")
-            changed = 0
+            not_changed = 0
             error_arr.append(os.path.basename(mod_dir[0:-5]))
-        if changed > 0:
+        if not_changed > 0:
             os.remove(filelist_path)
             with open(filelist_path,'w', encoding='utf8') as file_filelist:
                 file_filelist.write(filelist)
         print("\n")
     
     # No waypoints "error" handling, look into JESubConverter
-    print("Printing errors:\n")
+    print("Printing errors:")
     for error in error_arr:
         print(error)
 
