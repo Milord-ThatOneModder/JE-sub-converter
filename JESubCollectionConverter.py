@@ -6,11 +6,12 @@ import subprocess
 import JESubConverter
 import requests
 import time
+from itertools import product
 
 steam_workshopcontent_dir = "D:\SteamLibrary\steamapps\workshop\content\\602960"
 localmods_dir = "D:\\SteamLibrary\\steamapps\\common\\Barotrauma\\LocalMods"
 collection_url = "https://steamcommunity.com/sharedfiles/filedetails/?id=2832236513"
-
+steam_id_previous = ""
 
 mod_id = "2883784919"
 
@@ -27,6 +28,7 @@ def copy_and_edit(steam_workshopcontent_dir, localmods_dir, mod_id):
     pattern = "(?<=name=\").*?(?=\")"
     input_dir = os.path.join(steam_workshopcontent_dir, mod_id)
     output_dir = ""
+    global mod_name
     mod_name = ""
 
     filelist_path = os.path.join(input_dir, "filelist.xml")
@@ -41,7 +43,16 @@ def copy_and_edit(steam_workshopcontent_dir, localmods_dir, mod_id):
 
     output_dir = os.path.join(localmods_dir, mod_name + " [JE]")
 
+
+    global steam_id_previous
+    steam_id_previous = ""
     if os.path.exists(output_dir):
+        with open(os.path.join(output_dir, "filelist.xml"),'r', encoding='utf8') as filelist:
+            file_content = filelist.read()
+            pattern = " steamworkshopid=\".*?\""
+            arrx = re.findall(pattern, file_content)
+            if len(arrx) > 0:
+                steam_id_previous = arrx[0]
         shutil.rmtree(output_dir)
     shutil.copytree(input_dir, output_dir)
 
@@ -50,7 +61,7 @@ def copy_and_edit(steam_workshopcontent_dir, localmods_dir, mod_id):
     with open(filelist_path,'r', encoding='utf8') as filelist:
         file_content = filelist.read()
         pattern = " steamworkshopid=\".*?\""
-        file_content = re.sub(pattern, "", file_content)
+        file_content = re.sub(pattern, steam_id_previous, file_content)
         pattern = " installtime=\".*?\""
         file_content = re.sub(pattern, "", file_content)
         pattern = " expectedhash=\".*?\""
@@ -134,16 +145,12 @@ def main():
             filelist = file_content.read()
         pattern = "(?<=file=\"%ModDir%\/).*.sub(?=\" \/>)"
         sub_files = re.findall(pattern, filelist)
-        not_changed = 0
+        # Fix for people INABILITY to name their subs properly
+        sub_files_in_wm_folder = JESubConverter.get_list_of_sub_files_in_dir(os.path.join(steam_workshopcontent_dir, mod_id))
+        sub_files_in_lm_folder = JESubConverter.get_list_of_sub_files_in_dir(mod_dir)
+        # Found better one
+        not_changed = len(set(sub_files_in_wm_folder) & set(sub_files_in_lm_folder))
         for sub_file in sub_files:
-            # Fix for people INABILITY to name their subs properly
-            sub_files_in_wm_folder = JESubConverter.get_list_of_sub_files_in_dir(os.path.join(steam_workshopcontent_dir, mod_id))
-            sub_files_in_lm_folder = JESubConverter.get_list_of_sub_files_in_dir(mod_dir)
-            # FUCK IT
-            for sub_file_x in sub_files_in_lm_folder:
-                for sub_file_y in sub_files_in_wm_folder:
-                    if sub_file_x == sub_file_y:
-                        not_changed += 1
             if os.path.exists(os.path.join(mod_dir, sub_file)) == False:
                 # if it didnt find it NOT MY-- AH FUCK
                 if os.path.exists(os.path.join(mod_dir, sub_file[0:-9] + ".sub")) == True:
@@ -153,26 +160,38 @@ def main():
                     # on a second thought automatic is bad idea
                     filelist = filelist.replace(sub_file, "ERROR DID NOT FIND A SUB" + ".sub")
                     # should pop up in game, but in account oon me being a dumbass lest make a note to remind myself
-                    error_arr.append(mod_dir[0:-5] + " - SUB COULD NOT BE FOUND -  " + sub_file)
-                    with open(mod_dir[0:-5] + " - SUB COULD NOT BE FOUND -  " + sub_file + ".txt", 'w') as f:
-                        pass
+                    error_arr.append(os.path.basename(mod_dir[0:-5]) + " - SUB COULD NOT BE FOUND -  " + sub_file)
         if not_changed == len(sub_files):
             shutil.rmtree(mod_dir)
-            with open(mod_dir[0:-5] + " - None of sub files had a valid waypoints.txt", 'w') as f:
-                pass
-                print("ERROR: None of sub files had a valid waypoints")
+            print("ERROR: None of sub files had a valid waypoints")
             not_changed = 0
-            error_arr.append(os.path.basename(mod_dir[0:-5]))
+            error_arr.append(os.path.basename(mod_dir[0:-5]) + " - ERROR: None of sub files had a valid waypoints")
         if not_changed > 0:
             os.remove(filelist_path)
             with open(filelist_path,'w', encoding='utf8') as file_filelist:
                 file_filelist.write(filelist)
+        
+        global mod_name
+        global steam_id_previous
+        if len(steam_id_previous) > 0:
+            steam_id_previous = re.findall("[0-9]+", steam_id_previous)[0]
+        mod_name = mod_name + " [JE]"
+        drescriptor_file_str = "\"workshopitem\"\n{\n\t\"appid\"\t\t\"" + "602960" + "\"\n\t\"publishedfileid\"\t\"" + steam_id_previous + "\"\n\t\"contentfolder\"\t\t\"" + os.path.dirname(filelist_path) + "\"\n\t\"previewfile\"\t\t\"" + os.path.join(os.path.dirname(filelist_path), "Thumbnail.JPG") + "\"\n\t\"visibility\"\t\t\"0\"\n\t\"title\"\t\t\"" + mod_name + "\"\n\t\"description\"\t\t\"" + "Updated for Jobs Extended using JESubCollectionConverter\nOriginal submarine at: " + "https://steamcommunity.com/sharedfiles/filedetails/?id=" + mod_id + "\"\n\t\"changenote\"\t\t\"Automated update.\"\n}"
+        with open(os.path.join("DescriptorFolder", "Descriptor file " + mod_name + ".txt"),'w', encoding='utf8') as f:
+            f.write(drescriptor_file_str)
         print("\n")
+
+
     
     # No waypoints "error" handling, look into JESubConverter
+    str_to_file = ""
     print("Printing errors:")
     for error in error_arr:
+        str_to_file += error + "\n"
         print(error)
+    with open(os.path.join(localmods_dir, "ERRORS.txt"),'w', encoding='utf8') as f:
+        f.write(str_to_file)
+
 
 if __name__ == '__main__':
     main()

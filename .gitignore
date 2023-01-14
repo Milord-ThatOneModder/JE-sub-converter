@@ -17,3 +17,6 @@ Steam Workshop Subs to convert.htm
 .vscode/*
 __pycache__/**
 *.pyc
+DescriptorFolder/**
+appcache/appinfo.vdf
+__pycache__/JESubConverter.cpython-311.pyc
