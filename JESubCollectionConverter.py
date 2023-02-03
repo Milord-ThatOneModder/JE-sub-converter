@@ -14,7 +14,7 @@ collection_url = "https://steamcommunity.com/sharedfiles/filedetails/?id=2832236
 steam_id_previous = ""
 
 mod_id = "2883784919"
-, 'PrewiewPic': arry[i]}
+
 def get_htm_of_collection_site(link):
     response = requests.get(link, timeout=200)
     if response.status_code == 200:

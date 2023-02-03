@@ -374,21 +374,13 @@ def runit(options_arr_temp):
 
 
             if(removeafter):
-                tmp_input_prev = os.path.join(placement_dir, os.path.basename(old_filename[0:-4]))
-                tmp_output_prev = os.path.join(placement_dir, ".." , "RemoveDir" ,os.path.basename(old_filename[0:-4]))
-                tmp_input_curr = os.path.join(placement_dir, os.path.basename(filename[0:-4]))
-                tmp_output_curr = os.path.join(placement_dir, ".." , "RemoveDir" ,os.path.basename(filename[0:-4]))
-                if os.path.exists(os.path.dirname(tmp_output_curr)) == False:
-                    os.makedirs(os.path.dirname(tmp_output_curr))
-                    print('Directory ' + os.path.dirname(tmp_output_curr) + ' created')
-                if os.path.exists(tmp_input_prev + ".sub") == True:
-                    shutil.move(tmp_input_prev + ".sub", tmp_output_prev  + ".sub")
-                if os.path.exists(tmp_input_curr + ".sub") == True:
-                    shutil.move(tmp_input_curr + ".sub", tmp_output_curr  + ".sub")
-                if os.path.exists(tmp_input_prev + " [JE].xml") == True:
-                    shutil.move(tmp_input_prev + " [JE].xml", tmp_output_prev + " [JE].xml")
-                if os.path.exists(tmp_input_curr + " [JE].xml") == True:
-                    shutil.move(tmp_input_curr + " [JE].xml", tmp_output_curr + " [JE].xml")
+                tmp_input = os.path.join(placement_dir, os.path.basename(filename[0:-4]))
+                tmp_output = os.path.join(placement_dir, ".." , "RemoveDir" ,os.path.basename(filename[0:-4]))
+                if os.path.exists(os.path.dirname(tmp_output)) == False:
+                    os.makedirs(os.path.dirname(tmp_output))
+                    print('Directory ' + os.path.dirname(tmp_output) + ' created')
+                shutil.move(old_filename, tmp_output  + ".sub")
+                shutil.move(tmp_input + " [JE].xml", tmp_output + " [JE].xml")
 
 def main():
     runit(sys.argv)
