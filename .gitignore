@@ -15,9 +15,5 @@ Steam Workshop Subs to convert.txt
 __pycache__/JESubConverter.cpython-310.pyc
 Steam Workshop Subs to convert.htm
 .vscode/*
-__pycache__/**
+__pycache__**
 *.pyc
-DescriptorFolder/**
-appcache/appinfo.vdf
-__pycache__/JESubConverter.cpython-311.pyc
-**sync-conflict**

@@ -7,6 +7,9 @@ import os
 import re
 import shutil
 
+locked_remove = False
+allrequiredcontentpackages = ""
+
 def dumb_sub_check(file_string):
     file_string = str(file_string)
     extension = file_string[-4] + file_string[-3] + file_string[-2] + file_string[-1]
@@ -96,10 +99,14 @@ def fileoperation(file_content):
         newwaypoints = []
         if len(waypoints) > 0:
         
+            
             description = submarine.getAttribute('description')
             print('Submarine description: ' + description)
             requiredcontentpackages = submarine.getAttribute('requiredcontentpackages')
             print('Submarine requiredcontentpackages: ' + requiredcontentpackages)
+
+            global allrequiredcontentpackages
+            allrequiredcontentpackages += requiredcontentpackages
 
             lastID = 0
             pattern = "(?<=ID=\").*?(?=\")"
@@ -207,12 +214,15 @@ def fileoperation(file_content):
             name = name + ' [JE]'
         mydoc.documentElement.setAttribute('name', name)
         # add JobsExtended to requiredcontentpackages
-        if requiredcontentpackages.find(', JobsExtended') == -1:
-            if len(requiredcontentpackages) > 0:
-                requiredcontentpackages += ', ' + name_of_the_mod
-            else:
-                requiredcontentpackages = "Vanilla" + ', ' + name_of_the_mod
-        mydoc.documentElement.setAttribute('requiredcontentpackages', requiredcontentpackages)
+        # if requiredcontentpackages.find(', JobsExtended') == -1:
+        #     if len(requiredcontentpackages) > 0:
+        #         requiredcontentpackages += ', ' + name_of_the_mod
+        #     else:
+        #         requiredcontentpackages = "Vanilla" + ', ' + name_of_the_mod
+        # mydoc.documentElement.setAttribute('requiredcontentpackages', requiredcontentpackages)
+
+        
+
 
         # all items data TESTING
         filenameoutput = name
@@ -223,6 +233,11 @@ def fileoperation(file_content):
             os.makedirs(tmp_path)
         xml_result = open(tmp_file, 'w', encoding='utf-8')
         file_string = mydoc.toprettyxml(indent='   ', newl='')
+
+        # Locked removal
+        if locked_remove:
+            file_string = file_string.replace("Locked=\"True\"", "")
+
         xml_result.write(file_string)
 
         if os.path.exists(placement_dir) == False:
@@ -325,6 +340,11 @@ def runit(options_arr_temp):
                         placement_dir = str(options_arr[i]) 
                     continue
 
+            # -l, --lockedremove OPtional
+            if len(options_arr) >= 1 :
+                if options_arr[i-1] == '--lockedremove' or options_arr[i-1] == '-l':
+                    locked_remove = True
+
             # name of the sub(s) NEEDED
             # IndexError: string index out of range for some thus this:
             if(len(options_arr[i]) > 5):
@@ -374,13 +394,21 @@ def runit(options_arr_temp):
 
 
             if(removeafter):
-                tmp_input = os.path.join(placement_dir, os.path.basename(filename[0:-4]))
-                tmp_output = os.path.join(placement_dir, ".." , "RemoveDir" ,os.path.basename(filename[0:-4]))
-                if os.path.exists(os.path.dirname(tmp_output)) == False:
-                    os.makedirs(os.path.dirname(tmp_output))
-                    print('Directory ' + os.path.dirname(tmp_output) + ' created')
-                shutil.move(old_filename, tmp_output  + ".sub")
-                shutil.move(tmp_input + " [JE].xml", tmp_output + " [JE].xml")
+                tmp_input_prev = os.path.join(placement_dir, os.path.basename(old_filename[0:-4]))
+                tmp_output_prev = os.path.join(placement_dir, ".." , "RemoveDir" ,os.path.basename(old_filename[0:-4]))
+                tmp_input_curr = os.path.join(placement_dir, os.path.basename(filename[0:-4]))
+                tmp_output_curr = os.path.join(placement_dir, ".." , "RemoveDir" ,os.path.basename(filename[0:-4]))
+                if os.path.exists(os.path.dirname(tmp_output_curr)) == False:
+                    os.makedirs(os.path.dirname(tmp_output_curr))
+                    print('Directory ' + os.path.dirname(tmp_output_curr) + ' created')
+                if os.path.exists(tmp_input_prev + ".sub") == True:
+                    shutil.move(tmp_input_prev + ".sub", tmp_output_prev  + ".sub")
+                if os.path.exists(tmp_input_curr + ".sub") == True:
+                    shutil.move(tmp_input_curr + ".sub", tmp_output_curr  + ".sub")
+                if os.path.exists(tmp_input_prev + " [JE].xml") == True:
+                    shutil.move(tmp_input_prev + " [JE].xml", tmp_output_prev + " [JE].xml")
+                if os.path.exists(tmp_input_curr + " [JE].xml") == True:
+                    shutil.move(tmp_input_curr + " [JE].xml", tmp_output_curr + " [JE].xml")
 
 def main():
     runit(sys.argv)
