@@ -7,8 +7,10 @@ import os
 import re
 import shutil
 
-locked_remove = False
+locked_remove = True
 allrequiredcontentpackages = ""
+no_waypoints_err = False
+no_waypoints_err_number = 0
 
 def dumb_sub_check(file_string):
     file_string = str(file_string)
@@ -58,6 +60,7 @@ def add_by_id(job, waypoints, displacement):
     return SpawnPointHuman
 
 def fileoperation(file_content):
+    no_waypoints_err = False
     # parse an xml file by namee)
     with minidom.parseString(file_content) as mydoc:
         # Made this so ppl can se what subs have problems or whatever
@@ -188,7 +191,9 @@ def fileoperation(file_content):
             image_result = open(os.path.join(placement_dir, name_ofpic), 'wb')
             print("Item previewimage in a file: " + name_ofpic)
             image_result.write(previewimage)
-            return "ERR: No waypoints"
+            image_result.close()
+            no_waypoints_err = True
+            return name
 
         # testing 'newwaypoints' array
         if verbose == True:
@@ -236,9 +241,10 @@ def fileoperation(file_content):
 
         # Locked removal
         if locked_remove:
-            file_string = file_string.replace("Locked=\"True\"", "")
+            file_string = str(file_string).replace("Locked=\"True\"", "")
 
         xml_result.write(file_string)
+        xml_result.close()
 
         if os.path.exists(placement_dir) == False:
             os.mkdir(placement_dir)
@@ -249,6 +255,7 @@ def fileoperation(file_content):
         image_result = open(os.path.join(placement_dir, name_ofpic), 'wb')
         print("Item previewimage in a file: " + name_ofpic + "\n")
         image_result.write(previewimage)
+        image_result.close()
 
         with open(os.path.join(placement_dir, filenameoutput) + ".xml", 'rb') as f:
             file_content = f.read()
@@ -279,6 +286,7 @@ vanillaJobs = [
 # changename = False
 
 def runit(options_arr_temp):
+    name_arr = []
     global filename
     global changename
     global removeafter
@@ -360,6 +368,8 @@ def runit(options_arr_temp):
     # TODO a propt for user imput if no arguents are given
     name =""
     if(len(filename_arr) > 0):
+        name_arr = []
+        waypoints_n = False
         for i in range(len(filename_arr)):
             filename = filename_arr[i]
             old_filename = filename_arr[i]
@@ -378,10 +388,13 @@ def runit(options_arr_temp):
                     # xml_dir_filename = os.path.join(xml_dir, filename)
 
                     name = fileoperation(file_content)
-                    if name == "ERR: No waypoints":
+                    if no_waypoints_err:
                         # skip the cycle
                         print("ERR: No valid waypoints!\n")
-                        continue
+                        waypoints_n = True
+                        no_waypoints_err_number += 1
+                    else:
+                        name_arr.append(os.path.join(os.path.dirname(filename), str(name) + ".sub"))
             # 
             # if os.path.exists(os.path.dirname(os.path.join(xml_dir_filename, (os.path.basename(filename[0:-4]) + " [JE].xml")))) == False:
             #     os.makedirs(xml_dir_filename)
@@ -409,6 +422,7 @@ def runit(options_arr_temp):
                     shutil.move(tmp_input_prev + " [JE].xml", tmp_output_prev + " [JE].xml")
                 if os.path.exists(tmp_input_curr + " [JE].xml") == True:
                     shutil.move(tmp_input_curr + " [JE].xml", tmp_output_curr + " [JE].xml")
+    return name_arr
 
 def main():
     runit(sys.argv)

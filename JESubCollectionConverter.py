@@ -22,6 +22,22 @@ def get_htm_of_collection_site(link):
         # coundt be bothered to do it other way
         return "ERROR"
 
+# simmilarity of 2 strings
+def simmiliarity_str(string1, string2):
+    simmiliarity = 0
+
+    if len(string1) >= len(string2):
+        min_length = len(string2)
+    else:
+        min_length = len(string1)
+
+    for i in range(min_length):
+        if string1[i] == string2[i]:
+            simmiliarity += 1
+    return simmiliarity
+
+
+
 # condition for copy_all_with_extension
 def custom_condition(file, extensions_arr, mode):
     if_condition_true = False
@@ -96,8 +112,8 @@ def copy_and_edit(steam_workshopcontent_dir, localmods_dir, mod_id):
         file_content = re.sub(pattern, "", file_content)
         pattern = "(?<=name=\").*?(?=\")"
         file_content = re.sub(pattern, mod_name + " [JE]", file_content)
-        pattern = "(?!([JE]))\.sub"
-        file_content = re.sub(pattern, " [JE].sub", file_content)
+        # pattern = "(?!([JE]))\.sub"
+        # file_content = re.sub(pattern, " [JE].sub", file_content)
         pattern = "(?<=file=\")Mods\/" + re.escape(mod_name)
         file_content = re.sub(pattern, "%ModDir%", file_content)
 
@@ -118,7 +134,8 @@ def run_converter(mod_dir, localmods_dir, steam_workshopcontent_dir , mod_id):
     print("Converter running on: " + mod_dir)
     # print("\"JE\ sub\ converter.py\"" + " -c" + " " + input_dir + " -d " + mod_dir)
     # subprocess.call(["python", "JE sub converter.py", "-c", input_dir, "-d", mod_dir])
-    JESubConverter.runit(["-c", "-r", mod_dir, "-d", mod_dir, "-l"])
+    name_arr =  JESubConverter.runit(["-c", "-r", mod_dir, "-d", mod_dir, "-l"])
+    return name_arr
 
 
 
@@ -176,7 +193,7 @@ def main():
             f.write("Updated for Jobs Extended using JESubCollectionConverter\nOriginal submarine at: " + "https://steamcommunity.com/sharedfiles/filedetails/?id=" + mod_id)
             print('Readme created: ',os.path.join(mod_dir, "README.md"))
 
-        run_converter(mod_dir, localmods_dir, steam_workshopcontent_dir, mod_id)
+        name_arr = run_converter(mod_dir, localmods_dir, steam_workshopcontent_dir, mod_id)
         
 
         # No waypoints "error" handling, look into JESubConverter
@@ -184,9 +201,22 @@ def main():
         filelist = ""
         with open(filelist_path,'r+', encoding='utf8') as file_content:
             filelist = file_content.read()
-        pattern = "(?<=file=\"%ModDir%\/).*.sub(?=\" \/>)"
+        pattern = "(?<=Submarine file=\"%ModDir%\/).*.sub(?=\" \/>)"
         sub_files = re.findall(pattern, filelist)
         not_changed = 0
+        changed_names = name_arr
+        to_remove = []
+        # editing changed names
+        for sub_file in sub_files:
+            for i in range(len(changed_names)):
+                changed_names[i] = changed_names[i].replace(mod_dir + "\\", "")
+                if sub_file == changed_names[i]:
+                    to_remove.append(changed_names[i])
+
+        for remove_currently in to_remove:
+            changed_names.remove(remove_currently)
+
+
         for sub_file in sub_files:
             # Fix for people INABILITY to name their subs properly
             sub_files_in_wm_folder = JESubConverter.get_list_of_sub_files_in_dir(os.path.join(steam_workshopcontent_dir, mod_id))
@@ -196,6 +226,8 @@ def main():
                 for sub_file_y in sub_files_in_wm_folder:
                     if sub_file_x == sub_file_y:
                         not_changed += 1
+            if not_changed != JESubConverter.no_waypoints_err_number:
+                not_changed = JESubConverter.no_waypoints_err_number
             if os.path.exists(os.path.join(mod_dir, sub_file)) == False:
                 # if it didnt find it NOT MY-- AH FUCK
                 if os.path.exists(os.path.join(mod_dir, sub_file[0:-9] + ".sub")) == True:
@@ -204,7 +236,30 @@ def main():
                     # ... find a sub file that is missing form sub_files_in_lm_folder
                     # on a second thought automatic is bad idea
                     # filelist = filelist.replace(sub_file, "ERROR DID NOT FIND A SUB" + ".txt")
-                    filelist = re.sub("<Submarine file\=.*?" + sub_file + ".sub\" />","", filelist)
+                    # (?<=file=\"%ModDir%\/).*.sub(?=\" \/>)
+                    # <Submarine file\=.*?" + sub_file + ".sub\" />
+                    name_tochangeto = ""
+                    highest_simmilarity_score = 0
+                    for changed_name in changed_names:
+                        if simmiliarity_str(sub_file, changed_name) > highest_simmilarity_score or simmiliarity_str(sub_file, changed_name) == 0:
+                            name_tochangeto = changed_name
+                            highest_simmilarity_score = simmiliarity_str(sub_file, changed_name)
+                    if name_tochangeto != "":
+                        pattern = "(?<=Submarine file=\"%ModDir%\/).*?" + re.escape(sub_file) + "(?=\" \/>)"
+                        filelist = re.sub(pattern,name_tochangeto, filelist)
+                        pattern = "(?<=Submarine file=\"%ModDir%\/).*?" + re.escape(sub_file) + "(?=\"\/>)"
+                        filelist = re.sub(pattern,name_tochangeto, filelist)
+                    else:
+                        pattern = "<Submarine file=\"%ModDir%\/.*?" + re.escape(sub_file) + "\" \/>"
+                        filelist = re.sub(pattern,name_tochangeto, filelist)
+                        pattern = "<Submarine file=\"%ModDir%\/.*?" + re.escape(sub_file) + "\"\/>"
+                        filelist = re.sub(pattern,name_tochangeto, filelist)
+
+
+
+                    # & handling
+                    filelist = filelist.replace("&", "&amp;")
+
                     # <Submarine file\=.*?"\[EC\] Energia-Buran \(2\) \[JE]\.sub" \/>
                     # should pop up in game, but in account oon me being a dumbass lest make a note to remind myself
                     error_arr.append(mod_dir[0:-5] + " - SUB COULD NOT BE FOUND -  " + sub_file)
